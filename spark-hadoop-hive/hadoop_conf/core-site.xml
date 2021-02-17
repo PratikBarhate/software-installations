@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://${MASTER_NODE_PRIVATE_IP}:9000</value>
+  </property>
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>file:///home/ubuntu/hadoop_data/temp</value> 
+  </property>
+  <property>
+    <name>hadoop.http.authentication.type</name>
+    <value>simple</value>
+  </property>
+</configuration>

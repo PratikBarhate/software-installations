@@ -8,10 +8,10 @@
   </property>
   <property>
     <name>dfs.namenode.name.dir</name> 
-    <value>file:///home/ubuntu/hadoop_data/name</value>
+    <value>/home/ubuntu/hadoop_data/name</value>
   </property>
   <property>
     <name>dfs.datanode.data.dir</name>
-    <value>file:///home/ubuntu/hadoop_data/data</value>
+    <value>/home/ubuntu/hadoop_data/data</value>
   </property>
 </configuration>

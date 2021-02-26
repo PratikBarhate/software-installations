@@ -43,6 +43,10 @@ _NOTE: You can modify the installation locations and soft links to your needs, f
     # Apache Spark configuration
     export SPARK_HOME="/home/${USER}/spark"
     PATH=${PATH}:${SPARK_HOME}/bin:${SPARK_HOME}/sbin
+
+    # AWS Configurations
+    export AWS_ACCESS_KEY_ID="${YOUR_KEY}"
+    export AWS_SECRET_ACCESS_KEY="${YOUR_SECRET}"
 ```
 
 4. Execute command `mkdir machines`, within this directory create two lists `serverlist` and `workers`. List all the _private_ IP address in the `serverlist` file including the `driver/main/master` node. Again list the same addresses in the `workers` file, except for the `driver` IP address.
@@ -56,6 +60,12 @@ _NOTE: You can modify the installation locations and soft links to your needs, f
 ```
 
 6. To start using the updated `~/.bashrc` on `driver` node use - `source ~/.bashrc`
+
+7. Copy the `~/.bashrc` to all workers - `bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/workers /home/${USER}/.bashrc /home/${USER}/`
+
+7. Start using the bash environments on all machines - `bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "source ~/.bashrc"`
+
+8. Sometimes the environment variables are not reflected using `source` command, you may need to `reboot` the machines.
 
 **Step 2: Set up password-less SSH**
 
@@ -91,16 +101,25 @@ _NOTE: You can modify the installation locations and soft links to your needs, f
 3. Create soft links on all the workers :- 
 
 ```
-    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s ${HADOOP_decompressed_directory} /home/${USER}/hadoop"
+    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s /home/${USER}/${HADOOP_decompressed_directory} /home/${USER}/hadoop"
 
-    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s ${HIVE_decompressed_directory} /home/${USER}/hive"
+    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s /home/${USER}/${HIVE_decompressed_directory} /home/${USER}/hive"
 
-    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s ${SPARK_decompressed_directory} /home/${USER}/spark"
+    bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "ln -s /home/${USER}/${SPARK_decompressed_directory} /home/${USER}/spark"
 ```
 
 4. Sync the `~/.bashrc` file on all the workers using command - `bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/workers ~/.bashrc ~/.bashrc`
 
 5. To start using the updated `~/.bashrc` file use command - `bash scripts/sshWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "source ~/.bashrc"`
+
+
+**Updating the worker node addresses**
+
+1. Update for Hadoop nodes - `bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist machines/workers "${HADOOP_HOME}"/etc/hadoop/slaves` 
+
+2. Update for Hive nodes - `bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist machines/workers "${HIVE_HOME}"/conf/slaves` 
+
+3. Update for Spark nodes - `bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist machines/workers "${SPARK_HOME}"/conf/slaves`
 
 
 **Step 4: Configure Hadoop**
@@ -112,24 +131,77 @@ and `yarn-site.xml`
 of each configuration as desired.
 
 3. Copy the configuration files to the `conf` directory of the hadoop installation location.
-`bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist hadoop_conf/* ${HIVE_HOME}/etc/hadoop/` 
+`bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "hadoop_conf/*" "${HADOOP_HOME}"/etc/hadoop/` 
 
 
 **Step 5: Configure Hive**
 
-1. Download Apache Derby using the command [`v10.14.2.0`] - `wget https://downloads.apache.org//db/derby/db-derby-10.14.2.0/db-derby-10.14.2.0-bin.tar.gz`
+1. Copy the file using command - `cp "${HIVE_HOME}"/conf/hive-default.xml.template hive_conf/hive-site.xml`
 
-2. Decompress the `tar` file and create a soft link - `ln -s ${DERBY_decompressed_dir} /home/${USER}/derby`
-
-3. Add following lines to the `~/.bashrc` file on the `driver/main/master` node :-
+2. Add the following configuration at the begining within `hive_conf/hive-site.xml` file :-
 
 ```
-# Apache Derby Configurations
-export DERBY_HOME="/home/${USER}/derby"
-export PATH=$PATH:$DERBY_HOME/bin
-export CLASSPATH=$CLASSPATH:$DERBY_HOME/lib/derby.jar:$DERBY_HOME/lib/derbytools.jar
+  <property>
+    <name>hive.metastore.schema.verification</name>
+    <value>false</value>
+  </property> 
+  <property>
+    <name>fs.s3a.awsAccessKeyId</name>
+    <value>${YOUR_ACESS_KEY}</value>
+  </property>
+  <property>
+    <name>fs.s3a.awsSecretAccessKey</name>
+    <value>${YOUR_SECRET}</value>
+  </property>
+  <property>
+    <name>system:java.io.tmpdir</name>
+    <value>/tmp/hive/java</value>
+  </property>
+  <property>
+    <name>system:user.name</name>
+    <value>${user.name}</value>
+  </property>
 ```
 
-4. Create a directory to store meta-store - `mkdir ${DERBY_HOME}/data`
+2. Copy `hadoop_conf/core-site.xml` to `hive_conf/` directory.
 
-5. 
+3. Copy the configuration files to the `conf` directory of the hive installation location.
+`bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "hive_conf/*" "${HIVE_HOME}"/conf/`
+
+4. Start the Hadoop DFS and create the hive required directories :-
+
+    * `hdfs dfs -mkdir -p /user/hive/warehouse`
+    * `hdfs dfs -mkdir /tmp`
+    * `hdfs dfs -chmod g+w /user/hive/warehouse`
+    * `hdfs dfs -chmod g+w /tmp`
+
+5. Create the metastore using default derby server - `schematool -initSchema -dbType derby`
+
+ 
+ **Step 6: Configure Spark**
+
+ 1. There are two configuration file `spark-env.sh` and `spark-defaults.conf`.
+
+ 2. In each of the files replace `${MASTER_NODE_PRIVATE_IP}` with the IP of your master node.
+
+ 3. Copy `hadoop_conf/core-site.xml`, `hadoop_conf/hdfs-site.xml` and `hive_conf/hive-site.xml` to `spark_conf` directory.
+
+ 4. Copy the configuration files to the `conf` directory of the spark installation location.
+`bash scripts/scpWorkers.sh ${USER} ${PEM_FILE} machines/serverlist "spark_conf/*" "${SPARK_HOME}"/conf/` 
+
+5. Create history diretory on HDFS - `hdfs dfs -mkdir -p /applicationHistory`
+
+
+**Commands to start Services**
+
+start-dfs.sh
+hdfs dfsadmin -safemode leave
+start-history-server.sh
+$SPARK_HOME/sbin/start-all.sh
+
+**Commands to stop Services**
+
+$SPARK_HOME/sbin/stop-all.sh
+stop-history-server.sh
+stop-dfs.sh
+

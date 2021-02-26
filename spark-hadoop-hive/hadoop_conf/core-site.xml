@@ -8,10 +8,19 @@
   </property>
   <property>
     <name>hadoop.tmp.dir</name>
-    <value>file:///home/ubuntu/hadoop_data/temp</value> 
+    <value>/home/ubuntu/hadoop_data/temp</value> 
   </property>
   <property>
     <name>hadoop.http.authentication.type</name>
     <value>simple</value>
+  </property>
+  
+  <property>
+    <name>fs.s3a.access.key</name>
+    <value>${AWS_ACCESS_KEY_ID}</value>
+  </property>
+  <property>
+    <name>fs.s3a.secret.key</name>
+    <value>${AWS_SECRET_ACCESS_KEY}</value>
   </property>
 </configuration>

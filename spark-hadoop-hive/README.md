@@ -194,14 +194,14 @@ of each configuration as desired.
 
 **Commands to start Services**
 
-start-dfs.sh
-hdfs dfsadmin -safemode leave
-start-history-server.sh
-$SPARK_HOME/sbin/start-all.sh
+* start-dfs.sh
+* hdfs dfsadmin -safemode leave
+* start-history-server.sh
+* $SPARK_HOME/sbin/start-all.sh
 
 **Commands to stop Services**
 
-$SPARK_HOME/sbin/stop-all.sh
-stop-history-server.sh
-stop-dfs.sh
+* $SPARK_HOME/sbin/stop-all.sh
+* stop-history-server.sh
+* stop-dfs.sh
 
